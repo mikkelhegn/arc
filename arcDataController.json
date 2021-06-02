@@ -1,0 +1,147 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "namespace": {
+            "type": "string"
+        },
+        "location": {
+            "type": "string"
+        },
+        "resourceGroup" :{
+            "type": "string"
+        },
+        "connectionMode": {
+            "type": "string"
+        },
+        "controllerName": {
+            "type": "string"
+        },
+        "administratorLogin": {
+            "type": "string"
+        },
+        "administratorPassword": {
+            "type": "securestring"
+        },
+        "customLocation": {
+            "type": "string"
+        },
+        "uspClientId": {
+            "type": "string"
+        },
+        "uspTenantId": {
+            "type": "string"
+        },
+        "uspClientSecret": {
+            "type": "securestring"
+        },
+        "uspAuthority": {
+            "type": "string"
+        },
+        "dockerImageTag": {
+            "type": "string"
+        },
+        "storageClass": {
+            "type": "string"
+        },
+        "serviceType": {
+            "type": "string"
+        }
+    },
+    "variables": {},
+    "functions": [],
+    "resources": [
+        {
+            "type": "Microsoft.AzureArcData/dataControllers",
+            "apiVersion": "2021-03-02-preview",
+            "name": "[parameters('controllerName')]",
+            "location": "eastus",
+            "extendedLocation": {
+                "name": "[parameters('customLocation')]",
+                "type": "CustomLocation"
+            },
+            "properties": {
+                "basicLoginInformation": {
+                    "username": "[parameters('administratorLogin')]",
+                    "password": "[parameters('administratorPassword')]"
+                },
+                "uploadServicePrincipal": {
+                    "clientId": "[parameters('uspClientId')]",
+                    "tenantId": "[parameters('uspTenantId')]",
+                    "authority": "[parameters('uspAuthority')]",
+                    "clientSecret": "[parameters('uspClientSecret')]"
+                },
+                "k8sRaw": {
+                    "apiVersion": "arcdata.microsoft.com/v1alpha1",
+                    "kind": "datacontroller",
+                    "spec": {
+                        "credentials": {
+                            "controllerAdmin": "controller-login-secret",
+                            "dockerRegistry": "arc-private-registry",
+                            "domainServiceAccount": "domain-service-account-secret",
+                            "serviceAccount": "sa-mssql-controller"
+                        },
+                        "docker": {
+                            "imagePullPolicy": "Always",
+                            "imageTag": "[parameters('dockerImageTag')]",
+                            "registry": "mcr.microsoft.com",
+                            "repository": "arcdata"
+                        },
+                        "security": {
+                            "allowDumps": true,
+                            "allowNodeMetricsCollection": true,
+                            "allowPodMetricsCollection": true,
+                            "allowRunAsRoot": false
+                        },
+                        "services": [
+                            {
+                                "name": "controller",
+                                "port": 30080,
+                                "serviceType": "[parameters('serviceType')]"
+                            },
+                            {
+                                "name": "serviceProxy",
+                                "port": 30777,
+                                "serviceType": "[parameters('serviceType')]"
+                            }
+                        ],
+                        "settings": {
+                            "ElasticSearch": {
+                                "vm.max_map_count": "-1"
+                            },
+                            "azure": {
+                                "connectionMode": "[parameters('connectionMode')]",
+                                "location": "[parameters('location')]",
+                                "resourceGroup": "[parameters('resourceGroup')]",
+                                "subscription": "c484c80e-0a6f-4470-86de-697ecee16984"
+                            },
+                            "controller": {
+                                "displayName": "[parameters('controllerName')]",
+                                "enableBilling": "True",
+                                "logs.rotation.days": "7",
+                                "logs.rotation.size": "5000"
+                            }
+                        },
+                        "storage": {
+                            "data": {
+                                "accessMode": "ReadWriteOnce",
+                                "className": "[parameters('storageClass')]",
+                                "size": "15Gi"
+                            },
+                            "logs": {
+                                "accessMode": "ReadWriteOnce",
+                                "className": "[parameters('storageClass')]",
+                                "size": "10Gi"
+                            }
+                        }
+                    },
+                    "metadata": {
+                        "namespace": "[parameters('namespace')]",
+                        "name": "datacontroller"
+                    }
+                }
+            }
+        }
+    ],
+    "outputs": {}
+}
